@@ -129,3 +129,7 @@ Messages appear in your interface language (English, German, French or Italian).
 | No *Translate text content* option in the wizard | The module isn't set up (no API key). Ask your administrator. |
 
 When translating into one language fails, the other languages are still translated. Apostrophe then shows a report of the locales that failed; those get no new copy. Localize into them again once the problem is solved.
+
+## Support
+
+Questions, problems or ideas: use the [Supertext support form](https://integrations.supertext.com/en/support?platform=apostrophecms). Mention the version of ApostropheCMS and of the plugin, what you did and what you expected; an error message helps a lot. You get an answer by email, in your language.
