@@ -239,8 +239,6 @@ Dependabot (`.github/dependabot.yml`) opens weekly pull requests: minor and patc
 
 `vendor/supertext-sdk` and `vendor/supertext-plugin-health` aren't watched by Dependabot: update them with `npm run vendor-sdk` and `npm run vendor-plugin-health -- <tag>` (see *Supertext SDK* and *Supertext Plugin Health*).
 
-Some major versions are ignored on purpose: TypeScript (7.x is the native compiler, which the type-checking and build tools here don't support yet) and `@types/node` (the types must match the oldest Node version the plugin supports, not the newest). Lift an ignore rule when the plugin moves to the new version.
-
 ## Code quality and security checks
 
 - **Checks** workflow (`.github/workflows/checks.yml`): [actionlint](https://github.com/rhysd/actionlint) and [zizmor](https://docs.zizmor.sh/) lint the workflows on every push and pull request. Dependency review fails a pull request that adds a package with a known vulnerability (moderate or worse). Third-party actions are pinned to commit SHAs; Dependabot keeps the pins up to date. To run the workflow lint locally: `pip install actionlint-py zizmor`, then `actionlint` and `zizmor .github/workflows` in the repo root.
