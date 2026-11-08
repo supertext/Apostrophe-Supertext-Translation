@@ -2,6 +2,8 @@
 
 AI translation for [ApostropheCMS](https://apostrophecms.com) by [Supertext](https://www.supertext.com). The module plugs Supertext into Apostrophe's own **Localize…** step: editors select the locales, tick **Translate text content**, and every copy is translated by Supertext AI before Apostrophe saves it as a draft for review.
 
+![Demo: an editor opens Localize… on an English page in ApostropheCMS, picks Deutsch and Français, ticks Translate text content, and the German draft appears, translated by Supertext](docs/images/demo.gif)
+
 ```js
 // app.js
 modules: {

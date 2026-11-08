@@ -198,6 +198,34 @@ The script drops nothing: run it against a fresh database (it uses `supertext_ap
 
 `npm run docs:screenshots` (script `tests/docs/screenshots.mjs`, Playwright) logs in to a **fresh** demo (nothing localized yet) whose module talks to the stand-in, localizes the sample page as the editor and captures the wizard, the German result, the *Export for translation* dialog and an *Import translation* summary (a French XLIFF file filled from `samples.json`), the status screen and its language section (after **Save languages**) as the administrator. Set `BASE_URL` and the `DEMO_*` accounts; `CHROMIUM_PATH` if Playwright's own browser isn't installed. The status screenshot shows the live API address instead of the stand-in's and `https://www.example.ch` in the ping address. Point the demo's `SUPERTEXT_REPORT_URL` at the stand-in. `RESUME=1` skips the first localization (for a demo that has it already). Regenerate the images whenever the UI they show changes.
 
+## Demo movie
+
+`docs/images/demo.gif` (at the top of the README) is recorded by `tests/docs/movie.mjs` with Supertext's shared movie kit (`tests/docs/movie/movie-kit.mjs` and `assets/`: intro and outro cards, caption bar, cursor, cuts the waiting time; Inter under the SIL OFL, `assets/fonts/Inter-LICENSE.txt`). It shows, with a spoken line for every step (the GIF is silent), as the demo's editor: the sample page in English, *Edit* → *More Options* → *Localize…*, *Deutsch* and *Français*, *Translate text content* and *Localize Content*, the waiting state, and the German draft opened with the locale switcher. Run it against a fresh demo (the page not localized yet) and the stand-in with a delay, so the waiting state is visible:
+
+```bash
+STAND_IN_DELAY=10 node tests/docs/stand-in.mjs &       # files stay in_progress for 10 s
+# fresh demo (new database) with SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/, see Local development
+pip install piper-tts                                    # the voice (once)
+BASE_URL=http://127.0.0.1:3000 DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… npm run docs:movie
+```
+
+The MP4 is narrated with [Piper](https://pypi.org/project/piper-tts/) (`pip install piper-tts`): the kit's `say()` speaks each step's line, shows its caption and holds until the line is finished; the time spent making the speech is cut. The voice model (63 MB, pinned revision, checked by SHA-256) downloads itself once into `tests/docs/movie/voice/` (git-ignored; never commit it). Without Piper, or with `MOVIE_VOICE=0`, the movie is made silent with the captions only.
+
+Voice: Piper voice “alba” (en_GB), trained on a dataset from the University of Edinburgh's Centre for Speech Technology Research, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+
+It needs `ffmpeg` and writes 1280×720 at 30 fps. The GIF (800 px, 12 fps, keep it under 3 MB) is committed; the MP4 isn't: it goes to `tests/docs/movie/out/Apostrophe-Supertext-Translation.mp4` (git-ignored) or to `MOVIE_OUT`. `CHROMIUM_PATH` picks a Chromium as for the screenshots. Record it again when the wizard or the sample page changes. The kit is the same in every Supertext plugin repo: don't restyle it here.
+
+### Install movie
+
+`tests/docs/movie-install.mjs` records the install and configuration movie with the same kit and voice (MP4 only, no GIF). It shows the steps of `docs/INSTALLATION.md` in the kit's terminal (`npm install supertext-apostrophe-translation`, the module in `app.js`, the locales in `modules/@apostrophecms/i18n/index.js`, where to get a key, `SUPERTEXT_API_KEY` with the fake key `st-demo-0000-0000-0000`, `npm run build` and the `check` task), then, as the demo's **administrator**: *Supertext* in the admin bar (key set, *Test connection*), the language mapping (Deutsch from the preselected default *de-DE* to *Swiss High German (de-CH)*, *Translation review* left off, *Save languages*), and *Localize…* in a page's menu, where editors start a translation. Page loads are cut, and the status screen shows `https://api.supertext.com/v1/` and `https://www.example.ch` instead of the local addresses. Any demo whose module talks to the stand-in works (it needn't be fresh; it saves de → de-CH again):
+
+```bash
+node tests/docs/stand-in.mjs &
+BASE_URL=http://127.0.0.1:3000 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… npm run docs:movie:install
+```
+
+The MP4 goes to `tests/docs/movie/out/Apostrophe-Supertext-Translation-install.mp4` (git-ignored) or to `MOVIE_OUT`; it isn't committed. Record it again when the install steps or the Supertext screen change.
+
 ## Demo
 
 `demo/` is the public demo on Railway (project *supertext-cms-demos*, service *Apostrophe*, <https://apostrophe-production-986f.up.railway.app>): Apostrophe's essentials starter kit (MIT, see `demo/LICENSE-starter-kit`) with four locales (en, de, fr, it), a simple layout with a language switcher, an *article* piece type and this module (no `languages` option: the mapping `en-GB`, and `de-CH`, `fr-CH`, `it-CH` formal, is saved by `supertext-demo:setup` like the Supertext screen does, so the combo boxes stay editable).

@@ -7,3 +7,5 @@ demo/public/apos-frontend/
 demo/public/uploads/
 tests/docs/node_modules/
 demo/apos-build/
+tests/docs/movie/out/
+tests/docs/movie/voice/
