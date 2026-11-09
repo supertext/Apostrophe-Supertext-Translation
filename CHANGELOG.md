@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-09
+
+First stable release. Every plugin release is now tested end to end against the live Supertext API (`.github/workflows/e2e.yml`).
+
 ### Added
 
 - **Translation review** on/off per locale (admin bar → Supertext → Languages, a checkbox next to the Supertext language): translations into a locale with *Translation review* ticked go through Supertext's review service (Supertext Localization Review), where customers and Supertext linguists correct them on the website with a Chrome extension; corrections come back into Apostrophe with the next translation, and texts translated before keep their (reviewed) wording. Same API key, billing, languages and messages; other locales keep going directly to Supertext. Off by default for every locale (existing installations included). New option `reviewUrl` (defaults to Supertext's review service; `''` turns review off everywhere; `SUPERTEXT_REVIEW_URL` overrides it), and `review: true|false` in the `languages` option. All four interface languages.

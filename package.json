@@ -1,6 +1,6 @@
 {
   "name": "supertext-apostrophe-translation",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Supertext AI translation for ApostropheCMS: a translation provider for Apostrophe's own Localize workflow.",
   "main": "index.js",
   "type": "commonjs",
