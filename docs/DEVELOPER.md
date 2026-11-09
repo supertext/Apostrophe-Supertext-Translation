@@ -8,10 +8,11 @@ The package is one Apostrophe module, `supertext-apostrophe-translation` (alias 
 
 ```
 index.js                     the module: provider, status screen, API routes, tasks
-lib/sdk.js                   loads the vendored Supertext SDK (its v1 API: client, API key check); API addresses per environment
+lib/sdk.js                   loads the vendored Supertext SDK (its v1 API: client, API key check); API addresses per environment, review URL, createClient()
 lib/document.js              text units: one per plain-text field, one per rich-text paragraph
 lib/collect.js               field rules: finds the texts of a document by its schema
-lib/translate.js             language codes (the languages option), form of address, sends units through the SDK
+lib/translate.js             language codes (saved mapping + languages option), validation, form of address, Translation review per locale, sends units through the SDK
+lib/files.js                 translation files: export (XLIFF/HTML) and import glue on the SDK's TranslationFiles
 lib/reporting.js             Commando Center glue: version reports, API key check, ping (Plugin Health's InstallationReporter)
 vendor/supertext-sdk/        the Supertext TypeScript SDK (built JavaScript), copied by scripts/vendor-sdk.sh
 vendor/supertext-plugin-health/  Supertext Plugin Health (built JavaScript), copied by scripts/vendor-plugin-health.sh
@@ -19,7 +20,8 @@ scripts/vendor-sdk.sh          updates vendor/supertext-sdk from the SDK reposit
 scripts/vendor-plugin-health.sh  updates vendor/supertext-plugin-health from the Commando Center repository
 i18n/supertext/<lang>.json   UI strings (en, de, fr, it), namespace "supertext"
 i18n/apostrophe/<lang>.json  overrides Apostrophe's automaticTranslationDisclaimer
-ui/apos/components/SupertextStatusModal.vue   admin status screen
+ui/apos/components/SupertextStatusModal.vue   admin status screen with the language combo boxes and Translation review checkboxes
+ui/apos/components/SupertextFilesModal.vue    "Export for translation" / "Import translation" dialog (document menu)
 test/                        unit tests (node --test), no Apostrophe needed
 tests/docs/                  stand-in API, sample translations, screenshot script
 tests/e2e/                   end-to-end test against the real Supertext API (Playwright)
@@ -105,20 +107,37 @@ AI file translation API v1, the same as the WordPress plugin. The SDK does all o
 - **Rate limit:** HTTP 429 is retried up to 4 times (`Retry-After`, else 1/2/4/8 s plus jitter). Locales are translated one after the other (Apostrophe's wizard does that already).
 - **Document:** one `<div data-st-id="n">` per segment in a UTF-8 HTML document. Each `data-st-id` element is translated on its own, so a whole paragraph is one unit with its formatting as inline tags; never one unit per formatted run. More than 900,000 characters go into several documents, translated one after the other.
 - **Errors:** a `SupertextError` with a stable `code` (`authentication_failure`, `unsupported_language`, `quota_exceeded`, `too_many_requests`, `timeout`, …) and an English message; the API key never appears in it. The module logs the English message and notifies the editor with its own translated message for the code.
-- Base URLs (`lib/sdk.js`): `live` `https://api.supertext.com/v1/`, `staging` `https://api.staging.supertext.com/v1/`, `testing` `https://api.testing.supertext.com/v1/`; `SUPERTEXT_API_URL` / `apiUrl` override them. The User-Agent is `supertext-sdk-typescript supertext-apostrophe-translation/<version>`.
+- Base URLs (`lib/sdk.js`): `live` `https://api.supertext.com/v1/`, `staging` `https://api.staging.supertext.com/v1/`, `testing` `https://api.testing.supertext.com/v1/`; `SUPERTEXT_API_URL` / `apiUrl` override them. The User-Agent is `supertext-sdk-typescript Apostrophe-Supertext-Translation/<version>` (the version from `package.json`, as in the reports), for translations, the key check and the review service alike.
+
+**Translation review** (per target locale, `review` in the saved mapping or in the `languages` option): `index.js` `translate()` asks `reviewFor(target, languages)` and gets `self.client({ review })`, which is `createClient()` from `lib/sdk.js`: a second SDK client with the same key, timeouts, fetch and User-Agent whose base URL is the review URL (`reviewUrlFor(options.reviewUrl, SUPERTEXT_REVIEW_URL)`: the variable when set and not empty, else the option, default `REVIEW_URL`, the translation proxy of [Supertext Localization Review](https://github.com/Supertext/Localization-Review-Supertext-Translation), `https://localizationreview-production.up.railway.app/v1/`). One `translateTexts()` call does upload, status, download and delete with that client, so a job is always collected by the client that submitted it. The proxy speaks the same API v1, forwards to the live Supertext API with the plugin's key, stores every segment per key and serves reviewers' corrections on the next upload, so nothing else changes. `reviewUrl: ''` (or the same URL as the API) means `createClient()` always goes directly to Supertext. The key check (`check`, *Test connection*, the reporter), the version reports and the translation files (export/import, no API calls) never use the review service. Tests: `test/sdk.test.js` (a review locale's four calls go to the review URL with the same key and User-Agent, others directly, an empty or identical review URL turns it off, the default is the review service) and `test/collect.test.js` (`mergeLanguages()`/`validateLanguages()`/`reviewFor()` with review from the screen and the option).
 
 ### Language codes (`lib/translate.js`)
 
-**No guessing, no default regions.** Supertext accepts only the codes its `GET features` lists (the SDK's `Languages`, `vendor/supertext-sdk/v1/languages.js`; spec `spec/languages.json` in the SDK repository): 28 bare sources (`en`, `de`, …); 37 targets, regional only for de/en/fr/it/pt (`de-CH`, `en-US`, `pt-BR`), with a script for zh/sr (`zh-Hans`, `sr-Latn`), `gsw-u-sd-chzh` / `gsw-u-sd-chbe`, bare for all others (`es`, `nl`, `sl`). Anything else: HTTP 404 `INVALID_LANGUAGE_PAIR`. Politeness on a target without it (en, gsw, rm, sq, sr): HTTP 400 `FEATURE_ERROR`.
+**Defaults only where obvious.** Supertext accepts only the codes its `GET features` lists (the SDK's `Languages`, `vendor/supertext-sdk/v1/languages.js`; spec `spec/languages.json` in the SDK repository): 28 bare sources (`en`, `de`, …); 37 targets, regional only for de/en/fr/it/pt (`de-CH`, `en-US`, `pt-BR`), with a script for zh/sr (`zh-Hans`, `sr-Latn`), `gsw-u-sd-chzh` / `gsw-u-sd-chbe`, bare for all others (`es`, `nl`, `sl`). Anything else: HTTP 404 `INVALID_LANGUAGE_PAIR`. Politeness on a target without it (en, gsw, rm, sq, sr): HTTP 400 `FEATURE_ERROR`.
 
-- The mapping is the module option `languages` (`{ de: { code: 'de-CH', politeness: 'more' } }`, or `{ de: 'de-CH' }`), turned into the SDK's `LanguageMapping` by `mapping()`. One mapping serves both directions.
-- `targetCode(locale, languages)` = `Languages.target(locale, mapping)`: the mapped code (sent as it is), else an exact match of the locale name (case and `_`/`-` ignored: `de_ch` → `de-CH`), else `SupertextError('unsupported_language')`.
+- The mapping is chosen on the status screen: one `AposSelect` per locale (all of `apos.i18n.locales`) with `Languages.targetOptions()` as *Name (code)* (the name from `Intl.DisplayNames` in the admin's language, Supertext's English name for the `gsw-u-sd-…` dialects and as fallback), preselected with the saved code, else `Languages.suggestTarget(locale)`, else *— choose —* (`''`), plus a form-of-address select where `supportsPoliteness`. `POST …/languages` (administrators; Apostrophe's CSRF check applies to every session POST, `apos.http.post` handles it) stores `{ <locale>: { code, politeness, review } }` in `aposCache` (namespace `supertext-apostrophe-translation`, key `languages`, no expiry) after `validateLanguages()`: only the site's locales, only Supertext's target codes, `''` allowed (the default applies; a locale with neither a code nor *Translation review* isn't stored), `review` a boolean (an `AposCheckbox` per locale, read-only when `reviewUrl` is `''`), politeness stored as `default` where not offered; anything else → HTTP 400 `invalid` with `supertext:languagesInvalid`.
+- The module option `languages` (`{ de: { code: 'de-CH', politeness: 'more' } }`, or `{ de: 'de-CH' }`) overrides the saved mapping per locale (`mergeLanguages()`; those selects are read-only, `overridden`); its `review: true|false` overrides the locale's *Translation review* (`reviewOverridden`, checkbox read-only), otherwise the screen's checkbox applies, also for locales whose code the option sets. The result is turned into the SDK's `LanguageMapping` by `mapping()`. One mapping serves both directions. Upgrading from 0.1.0 needs no migration: the option, then the only mapping, keeps working as the override.
+- `targetCode(locale, languages)` = `Languages.target(locale, mapping)`: the mapped code (sent as it is), else an exact match of the locale name (case and `_`/`-` ignored: `de_ch` → `de-CH`), else the SDK's default (`de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh` → `zh-Hans`, `sr` → `sr-Latn`, `zh-TW` → `zh-Hant`, `es-ES` → `es`, …), else `SupertextError('unsupported_language')` (`en-IE`, `de-LI`, `gsw`, `sr-RS` need a mapping).
 - `sourceCode(locale, languages)` = `Languages.source(locale, mapping)`: the mapped code's language (`de-CH` → `de`), else the locale's language if Supertext offers it as source, else `unsupported_language`.
 - `translateUnits()` resolves both codes before calling the client, so an unsupported locale sends nothing.
 - `politeness()` sends the configured `more` / `less` only when `Languages.supportsPoliteness(target)` is true; otherwise nothing.
-- `languageStatus()` is what the status screen, `getSupportedLanguages()` and the `check` task show per locale: code (or none), mapped, `known` (in Supertext's list; a mapped code that isn't is still sent, and Supertext then answers `invalid_language_pair`), source code, form of address and `politenessIgnored`.
+- `languageStatus()` is what the status screen, `getSupportedLanguages()` and the `check` task show per locale: code (or none), mapped, `known` (in Supertext's list; a mapped code that isn't is still sent, and Supertext then answers `invalid_language_pair`), `defaulted` (the code is the SDK's default), `suggestion` (what the select preselects), source code, form of address, `politenessIgnored` and `review`. The status route adds `label`, `overridden`, `reviewOverridden`, `saved`, `selected` and `selectedPoliteness` per locale, `reviewUrl` and `targetOptions`.
 
 The stand-in (`tests/docs/stand-in.mjs`) rejects bare targets and regional sources like the real API.
+
+## Translation files: export and import (`lib/files.js`)
+
+*Export for translation* and *Import translation* use the SDK's `TranslationFiles` (Supertext SDK 0.5.0, `vendor/supertext-sdk/translation-file.js`, imported from the copy's root `index.js`, not from `v1/`: it doesn't talk to the API). They are an alternative to the API: the file is translated elsewhere and imported again.
+
+- **UI:** two context operations registered with `apos.doc.addContextOperation` (`supertext-export`, `supertext-import`, context `update`, condition `canLocalize`), so they appear in the More Options menu of every localized page and piece next to *Localize…*. Both open `SupertextFilesModal` with `mode` `export` or `import`.
+- **Routes** (`routes` in `index.js`, logged in; Apostrophe checks the CSRF token, or a bearer token for API calls):
+  - `POST /api/v1/supertext-apostrophe-translation/export`, JSON `{ _id, format: 'xliff' | 'html', targets: [locale…] }`: loads the document's draft in its locale (permission *edit*), collects the units with `self.units()` (`lib/collect.js`, the same units and keys as an API translation) and returns the file with `Content-Type` `application/x-xliff+xml` / `text/html; charset=utf-8` and `Content-Disposition: attachment; filename="apostrophe-<aposDocId>-<locale>.xlf"` (`apostrophe-<aposDocId>.xlf` for several targets). XLIFF: one job per target locale in one file; HTML: exactly one target.
+  - `POST /api/v1/supertext-apostrophe-translation/import?includeChanged=1&overwrite=1`, body: the file as text. Refused above 10 MB by `Content-Length` before reading, and while reading (`readBody` in `index.js`); kept in memory only. Returns `{ jobs: [summary…] }` (`counts` per SDK status, `imported`, `skippedChanged`, `saved`, `error`, `message`).
+- **Job metadata:** `plugin` = `Apostrophe-Supertext-Translation`; `reference` = `doc:<aposDocId>:<source locale>:<target locale>` (e.g. `doc:clx3k2…:en:de`; ids and locale names only, `formatReference`/`parseReference`); `sourceLanguage`/`targetLanguage` = `Languages.source`/`Languages.target` with the module's mapping, else the locale name with `_` → `-`. Segment keys are the units' paths (`title`, `main.0.content[1]`).
+- **Import** (`importFile` in `lib/files.js`, Apostrophe parts injected by `importTranslationFile` in `index.js`): `TranslationFiles.read(content)`; per job: `plugin` must be ours (else `other_system`), the reference must parse (else `not_found`), both locales must exist (else `no_language`), the source draft is loaded by `aposDocId` with the editor's permissions (else `not_found`; no *edit* permission: `forbidden`), its units are collected again and `TranslationFiles.importTranslations(file, current)` decides per segment. `ok` results (and `source_changed` with *includeChanged*) are written; `untranslated`, `invalid_markup` and `missing` aren't.
+- **Write-back:** the same path as an API translation: Apostrophe's own `manager.localize(req, sourceDraft, target, { update })`, with the translations on the request (`req.supertextImport`); the module's `@apostrophecms/doc-type:beforeLocalize` handler (`applyImport`) detaches the copy, applies the translations to its units (`applyTranslations`) and applies the slug rules (`translateSlug`/`keepSlug`). So imports land as drafts, keep the source's structure, and Apostrophe checks the target locale's permissions (and that a page's parent exists there). An existing localization is only replaced with *overwrite* (else the job reports `exists`), like the `translate` task's `--overwrite`.
+- **Errors:** `FilesError` (glue: `nothing_to_translate`, `no_targets`, `one_target`, `not_found`, `other_system`, `no_language`, `forbidden`, `exists`, `localize_failed`, `too_large`) and the SDK's `TranslationFileError` (`invalid_file`, `missing_metadata`, `too_large`) are shown with `supertext:files_error_<code>`.
+- **Security:** the import trusts nothing in the file: the SDK refuses DTDs and oversized files and takes markup only from the current source (XLIFF codes replaced by the source's tags; HTML only with the source's tags, attributes and safe links).
 
 ## Commando Center: version reports, key check, ping
 
@@ -165,8 +184,8 @@ The stand-in (`tests/docs/stand-in.mjs`) answers like the Supertext API: texts f
 
 ## Tests
 
-- `npm test`: unit tests for the text units (rich text split into paragraphs, formatting and links kept), the field rules and the translation through a fake client, the vendored SDK (it loads, sends the auth header, the language codes and deletes the file), the vendored Plugin Health copy (it loads, keeps state stored by the old SDK reporter), the language mapping (no guessing, `unsupported_language` sends nothing, politeness only where offered), the Commando Center glue with a fake transport and the UI strings (every language has the same keys, placeholders and URLs as English). The SDK's own tests and conformance scenarios run in the SDK repository, Plugin Health's in the Commando Center repository.
-- `tests/demo-check.sh` (CI): builds on the demo image, starts it twice against PostgreSQL and the stand-in, checks the demo accounts (created once, never duplicated, no password in the log), runs `check` (key check and a version report to the stand-in), checks the public ping, translates the sample page and article with the `translate` task into de/fr/it, checks that a second run skips existing locales, and reads the German page and Italian article back through Apostrophe's REST API as the editor.
+- `npm test`: unit tests for the text units (rich text split into paragraphs, formatting and links kept), the field rules and the translation through a fake client, the vendored SDK (it loads, sends the auth header, the language codes and deletes the file), the vendored Plugin Health copy (it loads, keeps state stored by the old SDK reporter), the language mapping (mapping → exact match → SDK default → `unsupported_language`, which sends nothing; the option overriding the saved mapping; server-side validation of what the screen saves; politeness only where offered; *Translation review* through the review URL, all four calls, others directly, off with an empty `reviewUrl`, the review service by default), the Commando Center glue with a fake transport, the translation files glue (`test/files.test.js`: reference round trip, export with the collector's keys and the mapping, import of `ok` only, `source_changed` only with the option, `untranslated`/`invalid_markup`/`missing` not written, other plugin, unknown reference, missing language, existing localization, too large files) and the UI strings (every language has the same keys, placeholders and URLs as English). The SDK's own tests and conformance scenarios run in the SDK repository, Plugin Health's in the Commando Center repository.
+- `tests/demo-check.sh` (CI): builds on the demo image, starts it twice against PostgreSQL and the stand-in, checks the demo accounts (created once, never duplicated, no password in the log), runs `check` (key check and a version report to the stand-in), checks the public ping, the language route (editors get 403, invalid codes or locales 400, the status lists the saved choice and Supertext's codes), translates the sample page and article with the `translate` task into de/fr/it, checks that a second run skips existing locales, reads the German page and Italian article back through Apostrophe's REST API as the editor, and does one export → import round trip (the article as HTML for French, title edited, imported once without and once with *overwrite*).
 
 ```bash
 docker build -f demo/Dockerfile -t supertext-apostrophe-demo .
@@ -178,15 +197,43 @@ The script drops nothing: run it against a fresh database (it uses `supertext_ap
 
 ## Docs screenshots
 
-`npm run docs:screenshots` (script `tests/docs/screenshots.mjs`, Playwright) logs in to a **fresh** demo (nothing localized yet) whose module talks to the stand-in, localizes the sample page as the editor and captures the wizard, the German result and the status screen as the administrator. Set `BASE_URL` and the `DEMO_*` accounts; `CHROMIUM_PATH` if Playwright's own browser isn't installed. The status screenshot shows the live API address instead of the stand-in's and `https://www.example.ch` in the ping address. Point the demo's `SUPERTEXT_REPORT_URL` at the stand-in. `RESUME=1` skips the first localization (for a demo that has it already). Regenerate the images whenever the UI they show changes.
+`npm run docs:screenshots` (script `tests/docs/screenshots.mjs`, Playwright) logs in to a **fresh** demo (nothing localized yet) whose module talks to the stand-in, localizes the sample page as the editor and captures the wizard, the German result, the *Export for translation* dialog and an *Import translation* summary (a French XLIFF file filled from `samples.json`), the status screen and its language section (after **Save languages**) as the administrator. Set `BASE_URL` and the `DEMO_*` accounts; `CHROMIUM_PATH` if Playwright's own browser isn't installed. The status screenshot shows the live API address instead of the stand-in's and `https://www.example.ch` in the ping address. Point the demo's `SUPERTEXT_REPORT_URL` at the stand-in. `RESUME=1` skips the first localization (for a demo that has it already). Regenerate the images whenever the UI they show changes.
+
+## Demo movie
+
+`docs/images/demo.gif` (at the top of the README) is recorded by `tests/docs/movie.mjs` with Supertext's shared movie kit (`tests/docs/movie/movie-kit.mjs` and `assets/`: intro and outro cards, caption bar, cursor, cuts the waiting time; Inter under the SIL OFL, `assets/fonts/Inter-LICENSE.txt`). It shows, with a spoken line for every step (the GIF is silent), as the demo's editor: the sample page in English, *Edit* → *More Options* → *Localize…*, *Deutsch* and *Français*, *Translate text content* and *Localize Content*, the waiting state, and the German draft opened with the locale switcher. Run it against a fresh demo (the page not localized yet) and the stand-in with a delay, so the waiting state is visible:
+
+```bash
+STAND_IN_DELAY=10 node tests/docs/stand-in.mjs &       # files stay in_progress for 10 s
+# fresh demo (new database) with SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/, see Local development
+pip install piper-tts                                    # the voice (once)
+BASE_URL=http://127.0.0.1:3000 DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… npm run docs:movie
+```
+
+The MP4 is narrated with [Piper](https://pypi.org/project/piper-tts/) (`pip install piper-tts`): the kit's `say()` speaks each step's line, shows its caption and holds until the line is finished; the time spent making the speech is cut. The voice model (63 MB, pinned revision, checked by SHA-256) downloads itself once into `tests/docs/movie/voice/` (git-ignored; never commit it). Without Piper, or with `MOVIE_VOICE=0`, the movie is made silent with the captions only.
+
+Voice: Piper voice “alba” (en_GB), trained on a dataset from the University of Edinburgh's Centre for Speech Technology Research, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+
+It needs `ffmpeg` and writes 1280×720 at 30 fps. The GIF (800 px, 12 fps, keep it under 3 MB) is committed; the MP4 isn't: it goes to `tests/docs/movie/out/Apostrophe-Supertext-Translation.mp4` (git-ignored) or to `MOVIE_OUT`. `CHROMIUM_PATH` picks a Chromium as for the screenshots. Record it again when the wizard or the sample page changes. The kit is the same in every Supertext plugin repo: don't restyle it here.
+
+### Install movie
+
+`tests/docs/movie-install.mjs` records the install and configuration movie with the same kit and voice (MP4 only, no GIF). It shows the steps of `docs/INSTALLATION.md` in the kit's terminal (`npm install supertext-apostrophe-translation`, the module in `app.js`, the locales in `modules/@apostrophecms/i18n/index.js`, where to get a key, `SUPERTEXT_API_KEY` with the fake key `st-demo-0000-0000-0000`, `npm run build` and the `check` task), then, as the demo's **administrator**: *Supertext* in the admin bar (key set, *Test connection*), the language mapping (Deutsch from the preselected default *de-DE* to *Swiss High German (de-CH)*, *Translation review* left off, *Save languages*), and *Localize…* in a page's menu, where editors start a translation. Page loads are cut, and the status screen shows `https://api.supertext.com/v1/` and `https://www.example.ch` instead of the local addresses. Any demo whose module talks to the stand-in works (it needn't be fresh; it saves de → de-CH again):
+
+```bash
+node tests/docs/stand-in.mjs &
+BASE_URL=http://127.0.0.1:3000 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… npm run docs:movie:install
+```
+
+The MP4 goes to `tests/docs/movie/out/Apostrophe-Supertext-Translation-install.mp4` (git-ignored) or to `MOVIE_OUT`; it isn't committed. Record it again when the install steps or the Supertext screen change.
 
 ## Demo
 
-`demo/` is the public demo on Railway (project *supertext-cms-demos*, service *Apostrophe*, <https://apostrophe-production-986f.up.railway.app>): Apostrophe's essentials starter kit (MIT, see `demo/LICENSE-starter-kit`) with four locales (en, de, fr, it), a simple layout with a language switcher, an *article* piece type and this module (`languages`: `en-GB`, and `de-CH`, `fr-CH`, `it-CH` formal).
+`demo/` is the public demo on Railway (project *supertext-cms-demos*, service *Apostrophe*, <https://apostrophe-production-986f.up.railway.app>): Apostrophe's essentials starter kit (MIT, see `demo/LICENSE-starter-kit`) with four locales (en, de, fr, it), a simple layout with a language switcher, an *article* piece type and this module (no `languages` option: the mapping `en-GB`, and `de-CH`, `fr-CH`, `it-CH` formal, is saved by `supertext-demo:setup` like the Supertext screen does, so the combo boxes stay editable).
 
 - `demo/Dockerfile` (build context: repository root) installs the demo with the module copied in and builds the admin assets.
 - `demo/docker/entrypoint.sh` creates the demo's own database `APOSTROPHE_DB_NAME` (default `supertext_apostrophe`) on the Postgres server in `DATABASE_URL` if needed, runs Apostrophe's migrations and `supertext-demo:setup`, then starts Apostrophe. `demo/app.js` derives `APOS_DB_URI` from the same variables, so `docker exec demo node app <task>` works too.
-- `demo/modules/supertext-demo` (`setup` task) runs on every start and only creates what's missing: the demo accounts, the English home page text, the sample page *Swiss chocolate, shipped worldwide* and the sample article *Handmade in Bern*, all published.
+- `demo/modules/supertext-demo` (`setup` task) runs on every start and only creates what's missing: the demo accounts, the English home page text, the sample page *Swiss chocolate, shipped worldwide* and the sample article *Handmade in Bern*, all published, and the Supertext language mapping (only when none is saved, so choices made on the screen survive restarts).
 
 ### Demo accounts
 
@@ -206,6 +253,7 @@ All demo variables are listed in `demo/.env.example`. On Railway they are servic
 | `APOS_SESSION_SECRET` | long random string, kept stable |
 | `SUPERTEXT_API_KEY` | Supertext's demo key |
 | `SUPERTEXT_VERSION_REPORTS` | not set (version reports on); `0` turns them off |
+| `SUPERTEXT_REVIEW_URL` | not set (Supertext's review service for locales with *Translation review* on); only for another review service |
 | `DEMO_*` | see above |
 
 Railway settings (set on the service; `railway.json` is ignored): Dockerfile path `demo/Dockerfile`, healthcheck `/health` (a static file), restart on failure, region `ams`. Uploads live in the container, so images added in the demo disappear on redeploy.
@@ -241,14 +289,13 @@ Dependabot (`.github/dependabot.yml`) opens weekly pull requests: minor and patc
 
 `vendor/supertext-sdk` and `vendor/supertext-plugin-health` aren't watched by Dependabot: update them with `npm run vendor-sdk` and `npm run vendor-plugin-health -- <tag>` (see *Supertext SDK* and *Supertext Plugin Health*).
 
-Some major versions are ignored on purpose: TypeScript (7.x is the native compiler, which the type-checking and build tools here don't support yet) and `@types/node` (the types must match the oldest Node version the plugin supports, not the newest). Lift an ignore rule when the plugin moves to the new version.
-
 ## Code quality and security checks
 
 - **Checks** workflow (`.github/workflows/checks.yml`): [actionlint](https://github.com/rhysd/actionlint) and [zizmor](https://docs.zizmor.sh/) lint the workflows on every push and pull request. Dependency review fails a pull request that adds a package with a known vulnerability (moderate or worse). Third-party actions are pinned to commit SHAs; Dependabot keeps the pins up to date. To run the workflow lint locally: `pip install actionlint-py zizmor`, then `actionlint` and `zizmor .github/workflows` in the repo root.
 - **Links** workflow (`.github/workflows/links.yml`): [lychee](https://lychee.cli.rs/) checks the links in all Markdown files weekly and whenever docs change on `main`. Broken links open (or update) the issue "Broken links in the docs". Links that can't work from CI (local URLs, placeholders, pages behind a login) are excluded in `.lycheeignore`.
 - JavaScript and TypeScript are analysed by CodeQL (see below), so this repo runs no separate static analyser.
 - GitHub settings (set by Remy's setup script, not stored in the repo): **secret scanning with push protection** (a push containing a known token format is rejected; findings under *Security → Secret scanning*) and **CodeQL default setup** (findings under *Security → Code scanning* and as comments on pull requests; PHP isn't covered by CodeQL, which is why the PHP plugins run PHPStan).
+- `.github/workflows/support-triage.yml`: support requests from the Supertext integrations website arrive as issues labelled `support` (contact details stay in the Supertext CMS). Claude classifies each one: answers questions (marked `<!-- supertext:reply -->`, emailed to the sender by the CMS) and closes them, fixes bugs as pull requests for review (never merged automatically), labels feature requests `feature-request`. Only people with triage rights can add labels, so outsiders can't start it. Needs the organisation secret `ANTHROPIC_API_KEY`; the workflow is the same in every Supertext repo.
 
 Before starting work in this repo, look at its open findings: code scanning alerts, secret scanning alerts, Dependabot PRs and the "Broken links in the docs" issue.
 
@@ -265,7 +312,9 @@ Publishing to npm (`npm publish`) is a separate, manual step by Supertext.
 ## Known limitations and roadmap
 
 - `@apostrophecms/translation` is marked "may change" by Apostrophe; the module follows its interface as of Apostrophe 4.33.
-- Only the provider API is used: there is no Supertext-specific UI in the editor, and Apostrophe gives no overwrite warning when localizing into a locale that already has the document.
+- Translation goes through the provider API: apart from *Export for translation* / *Import translation*, there is no Supertext-specific UI in the editor, and Apostrophe gives no overwrite warning when localizing into a locale that already has the document.
+- Translation files are exported one document at a time (no batch export from the list yet). An import writes the whole localization again from the current source: texts not imported keep the source text.
 - Rich text is split into block elements; inline-only rich text is sent as one unit. Tables are translated cell by cell.
 - Translations run during the localize request; very long documents can make the wizard wait until `timeout`.
 - Professional (human) translation orders are not supported yet.
+- Re-translating replaces the localized draft; no change detection. A translation memory and reviewers' corrections come from the review service when a locale has *Translation review* on; corrections reach Apostrophe only with the next translation (no push).

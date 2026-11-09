@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { collectUnits } = require('../lib/collect');
-const { translateUnits, languageStatus, mapping, politeness, sourceCode, targetCode, targetOrNull } = require('../lib/translate');
+const { translateUnits, languageStatus, mapping, mergeLanguages, politeness, reviewFor, sourceCode, targetCode, targetOrNull, validateLanguages } = require('../lib/translate');
 const { SupertextError } = require('../lib/sdk');
 
 const schema = [
@@ -72,7 +72,7 @@ test('mapping: the languages option, long and short form', () => {
   assert.deepEqual(mapping(), {});
 });
 
-test('target: the mapping wins, else an exact match, else unsupported_language', () => {
+test('target: the mapping wins, else an exact match, else the SDK default, else unsupported_language', () => {
   assert.equal(targetCode('de', { de: { code: 'de-CH' } }), 'de-CH');
   assert.equal(targetCode('ch', { ch: { code: 'de-CH' } }), 'de-CH');
   assert.equal(targetCode('de-ch'), 'de-CH');
@@ -80,11 +80,76 @@ test('target: the mapping wins, else an exact match, else unsupported_language',
   assert.equal(targetCode('zh-hant'), 'zh-Hant');
   assert.equal(targetCode('es'), 'es');
   assert.equal(targetCode('nl'), 'nl');
-  // No default regions: a bare `de` or `en` target is not guessed.
-  for (const locale of [ 'de', 'en', 'fr', 'xx', 'de-XX' ]) {
+  // The SDK's defaults where they are obvious.
+  assert.equal(targetCode('de'), 'de-DE');
+  assert.equal(targetCode('en'), 'en-US');
+  assert.equal(targetCode('fr'), 'fr-FR');
+  assert.equal(targetCode('es-ES'), 'es');
+  assert.equal(targetCode('zh'), 'zh-Hans');
+  // Nothing else is guessed.
+  for (const locale of [ 'xx', 'de-XX', 'en-IE', 'de-LI', 'gsw', 'sr-RS' ]) {
     assert.throws(() => targetCode(locale), (e) => e instanceof SupertextError && e.code === 'unsupported_language', locale);
   }
-  assert.equal(targetOrNull('de'), null);
+  assert.equal(targetOrNull('en-IE'), null);
+});
+
+test('mergeLanguages: the module option wins per locale', () => {
+  const merged = mergeLanguages(
+    { de: { code: 'de-DE', politeness: 'less' }, fr: { code: 'fr-CH', politeness: 'default' } },
+    { de: { code: 'de-CH', politeness: 'more' }, it: 'it-CH' }
+  );
+  assert.deepEqual(merged.languages, {
+    de: { code: 'de-CH', politeness: 'more' },
+    fr: { code: 'fr-CH', politeness: 'default' },
+    it: 'it-CH'
+  });
+  assert.deepEqual(merged.overridden.sort(), [ 'de', 'it' ]);
+  assert.deepEqual(mergeLanguages(undefined, undefined), { languages: {}, overridden: [], reviewOverridden: [] });
+});
+
+test('mergeLanguages: Translation review from the screen, the module option wins', () => {
+  const merged = mergeLanguages(
+    { de: { code: 'de-DE', review: true }, fr: { code: 'fr-CH', review: true }, it: { code: '', review: true }, nl: { code: '', review: false } },
+    { de: { code: 'de-CH' }, fr: { review: false }, es: { review: true } }
+  );
+  assert.deepEqual(merged.languages, {
+    // The option sets the code; review stays the screen's.
+    de: { code: 'de-CH', review: true },
+    fr: { code: 'fr-CH', review: false },
+    // Review without a Supertext language of its own (the default code applies).
+    it: { code: '', review: true },
+    es: { review: true }
+  });
+  assert.deepEqual(merged.overridden, [ 'de' ]);
+  assert.deepEqual(merged.reviewOverridden.sort(), [ 'es', 'fr' ]);
+  assert.equal(reviewFor('de', merged.languages), true);
+  assert.equal(reviewFor('fr', merged.languages), false);
+  assert.equal(reviewFor('it', merged.languages), true);
+  assert.equal(reviewFor('nl', merged.languages), false);
+  assert.equal(reviewFor('xx', merged.languages), false);
+  assert.equal(targetCode('it', merged.languages), 'it-IT');
+});
+
+test('validateLanguages: only the site\'s locales and Supertext\'s target codes', () => {
+  const locales = [ 'en', 'de', 'gsw' ];
+  assert.deepEqual(validateLanguages({
+    en: { code: 'en-GB', politeness: 'more' },
+    de: { code: 'de-CH', politeness: 'more' },
+    gsw: { code: '' }
+  }, locales), {
+    // English has no formal/informal address: stored as default.
+    en: { code: 'en-GB', politeness: 'default', review: false },
+    de: { code: 'de-CH', politeness: 'more', review: false }
+  });
+  // Translation review is kept, also without a chosen code.
+  assert.deepEqual(validateLanguages({ de: { code: 'de-CH', review: true }, gsw: { code: '', review: true }, en: { code: '', review: false } }, locales), {
+    de: { code: 'de-CH', politeness: 'default', review: true },
+    gsw: { code: '', politeness: 'default', review: true }
+  });
+  for (const bad of [ { de: { code: 'de' } }, { xx: { code: 'de-CH' } }, { de: { code: 'de-CH', politeness: 'very' } }, { de: { code: 'de-CH', review: 'yes' } } ]) {
+    assert.throws(() => validateLanguages(bad, locales), (e) => Array.isArray(e.invalid) && e.invalid.length === 1);
+  }
+  assert.throws(() => validateLanguages([], locales));
 });
 
 test('source: one mapping for both directions', () => {
@@ -105,16 +170,23 @@ test('politeness only where Supertext offers it', () => {
 test('languageStatus for the status screen', () => {
   const languages = { de: { code: 'de-CH', politeness: 'more' }, en: { code: 'en-GB', politeness: 'more' }, ko: { code: 'ko-KR' } };
   assert.deepEqual(languageStatus('de', languages), {
-    locale: 'de', code: 'de-CH', mapped: true, supported: true, known: true, source: 'de',
-    politeness: 'more', politenessAvailable: true, politenessIgnored: false
+    locale: 'de', code: 'de-CH', mapped: true, supported: true, known: true, defaulted: false,
+    suggestion: 'de-DE', source: 'de', politeness: 'more', politenessAvailable: true, politenessIgnored: false, review: false
   });
+  assert.equal(languageStatus('de', { de: { code: 'de-CH', review: true } }).review, true);
   const en = languageStatus('en', languages);
   assert.equal(en.politeness, 'default');
   assert.equal(en.politenessIgnored, true);
   const fr = languageStatus('fr', languages);
-  assert.equal(fr.supported, false);
-  assert.equal(fr.code, null);
+  assert.equal(fr.supported, true);
+  assert.equal(fr.code, 'fr-FR');
+  assert.equal(fr.defaulted, true);
   assert.equal(fr.source, 'fr');
+  const ie = languageStatus('en-IE', languages);
+  assert.equal(ie.supported, false);
+  assert.equal(ie.code, null);
+  assert.equal(ie.suggestion, null);
+  assert.equal(ie.source, 'en');
   // A mapped code is sent as it is, but flagged when Supertext doesn't list it.
   assert.equal(languageStatus('ko', languages).known, false);
 });
@@ -123,7 +195,7 @@ test('an unsupported locale sends nothing', async () => {
   let called = false;
   const client = { translateTexts: async () => { called = true; return new Map(); } };
   const units = [ { text: 'Hello', html: false, path: 'title', apply: () => true } ];
-  await assert.rejects(translateUnits(client, units, 'en', 'de'), (e) => e.code === 'unsupported_language');
+  await assert.rejects(translateUnits(client, units, 'en', 'en-IE'), (e) => e.code === 'unsupported_language');
   await assert.rejects(translateUnits(client, units, 'xx', 'de', { de: 'de-CH' }), (e) => e.code === 'unsupported_language');
   assert.equal(called, false);
 });

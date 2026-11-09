@@ -9,3 +9,5 @@ tests/docs/node_modules/
 tests/e2e/node_modules/
 tests/e2e/artifacts/
 demo/apos-build/
+tests/docs/movie/out/
+tests/docs/movie/voice/
