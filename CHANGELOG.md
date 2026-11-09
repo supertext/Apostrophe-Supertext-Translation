@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Security
+
+- The development setup and the demo take the fixed versions of Apostrophe's dependencies within their ranges (`dompurify` 3.4.17, `multer` 2.5, `body-parser` 1.20.9, `qs` 6.16.2, `undici` 7.30.2, `markdown-it` 14.3.3, `fast-uri`, `vite`): no high or critical advisories left. No change to the module itself.
+
+### Changed
+
+- Demo: dotenv 17 → 18.
+
 ## [1.0.0] - 2026-11-09
 
 First stable release. Every plugin release is now tested end to end against the live Supertext API (`.github/workflows/e2e.yml`).

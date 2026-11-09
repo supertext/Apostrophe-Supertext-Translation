@@ -289,6 +289,8 @@ Dependabot (`.github/dependabot.yml`) opens weekly pull requests: minor and patc
 
 `.github/workflows/dependabot-merge.yml` merges a minor or patch package update by itself once every other check on its pull request has passed (it waits up to 85 minutes and leaves the pull request alone if a check fails). GitHub Actions updates and majors stay for a person: the workflow's built-in token can't merge changes to workflow files, and a major needs a decision. Merges by the workflow don't start CI on `main`; the weekly health check looks at `main`.
 
+Known advisories that remain (November 2026, moderate and low, all inside Apostrophe's own dependencies): `@tiptap/core` 2 (fixed only in Tiptap 3, which Apostrophe 4 doesn't use yet), `glob` 13 and `minimatch` below 11 (fixed only in the next major) and `deepmerge` (no fixed version). They go away when Apostrophe updates them.
+
 `vendor/supertext-sdk` and `vendor/supertext-plugin-health` aren't watched by Dependabot: update them with `npm run vendor-sdk` and `npm run vendor-plugin-health -- <tag>` (see *Supertext SDK* and *Supertext Plugin Health*).
 
 ## Code quality and security checks
