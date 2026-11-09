@@ -18,6 +18,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - *Supertext* status screen for administrators (version, API key, API address, connection test, languages), with links to create a Supertext account and to generate the API key.
 - Tasks `supertext-apostrophe-translation:check` and `supertext-apostrophe-translation:translate`.
 - Interface in English, German, French and Italian.
+- Docs: demo movie in the README (`docs/images/demo.gif`, recorded from the demo against the stand-in with `npm run docs:movie`; the MP4 version, not committed, is narrated with the Piper voice “alba”).
+- Docs: install and configuration movie (`npm run docs:movie:install`): `npm install`, the module in `app.js`, the locales, `SUPERTEXT_API_KEY`, the `check` task, the Supertext screen with *Test connection* and the language mapping, and *Localize…* for editors; narrated MP4, not committed.
 - Retries when Supertext's per-second rate limit is hit; the API key works with or without the `Supertext-Auth-Key ` prefix.
 - Tested on Node.js 26 as well (CI runs the unit tests on Node 22, 24 and 26).
 - Support: the Supertext support form is linked in the README, the user guide and GitHub's "New issue" page.

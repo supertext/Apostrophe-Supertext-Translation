@@ -2,6 +2,8 @@
 
 AI translation for [ApostropheCMS](https://apostrophecms.com) by [Supertext](https://www.supertext.com). The module plugs Supertext into Apostrophe's own **Localize…** step: editors select the locales, tick **Translate text content**, and every copy is translated by Supertext AI before Apostrophe saves it as a draft for review.
 
+![Demo: an editor opens Localize… on an English page in ApostropheCMS, picks Deutsch and Français, ticks Translate text content, and the German draft appears, translated by Supertext](docs/images/demo.gif)
+
 ```js
 // app.js
 modules: {
@@ -71,7 +73,7 @@ Supertext offers AI and professional translation plugins for these systems:
 | TYPO3 | [Typo3-Supertext-Translation](https://github.com/Supertext/Typo3-Supertext-Translation) | TYPO3 extension (Composer) that hooks into TYPO3's own localization, with a Supertext backend module for translation files. | Translates pages and content elements as editors localize them |
 | Umbraco | [Umbraco-Supertext-Translation](https://github.com/Supertext/Umbraco-Supertext-Translation) | Umbraco package (NuGet) with a backoffice extension. | *Translate with Supertext* for pages, block lists and grids included |
 | Wagtail | [Wagtail-Supertext-Translation](https://github.com/Supertext/Wagtail-Supertext-Translation) | Python package: a machine translator for wagtail-localize. | Translates pages and snippets inside wagtail-localize's editor |
-| WordPress (Polylang) | [supertext-wordpress-polylang](https://github.com/Supertext/supertext-wordpress-polylang) | WordPress plugin: a machine-translation service for Polylang Pro, plus professional translation orders. | AI translation next to DeepL in Polylang, and human translation orders |
+| WordPress (Polylang) | [wordpress-polylang](https://github.com/supertext/wordpress-polylang) | WordPress plugin: a machine-translation service for Polylang Pro, plus professional translation orders. | AI translation next to DeepL in Polylang, and human translation orders |
 
 ### Product information management (PIM)
 
