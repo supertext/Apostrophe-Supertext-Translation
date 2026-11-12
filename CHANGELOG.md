@@ -10,6 +10,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Changed
 
+- English UI text: *Localize…* is written with an ellipsis, as Apostrophe's menu shows it; a missing API key is "not set" in all three messages that report it, with the environment variable named the same way round; "Supertext couldn't translate …" matches the other error messages. German, French and Italian are unaffected.
+- README: the feature paragraph is split into one sentence per idea, and the version report now states what the UI already said, that no personal data is sent.
 - Demo: dotenv 17 → 18.
 
 ## [1.0.0] - 2026-11-09
