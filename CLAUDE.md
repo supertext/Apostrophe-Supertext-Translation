@@ -114,7 +114,7 @@ Lessons from testing against the live API (October 2026), to apply in every plug
 - **Railway builds from a `git archive` snapshot**: never `export-ignore` `demo/` or anything the Dockerfile copies.
 - **Railway databases:** the Postgres service is shared; this demo uses its own database on it (`APOSTROPHE_DB_NAME`, default `supertext_apostrophe`). Variables can reference other services (`${{Postgres.DATABASE_URL}}`).
 - **Demo-check scripts with `set -o pipefail`:** never `docker logs … | grep -q`; capture the log first.
-- **Docker builds in a Claude session:** `npm ci` inside `docker build` needs the proxy: build a local `node:22-bookworm-slim` from `mirror.gcr.io/library/node:22-bookworm-slim` with the proxy CA (`/root/.ccr/ca-bundle.crt`, `NODE_EXTRA_CA_CERTS`) and run `docker build --network host --build-arg HTTPS_PROXY=$HTTPS_PROXY …`.
+- **Docker builds in a Claude session:** `npm ci` inside `docker build` needs the proxy: build a local `node:26-bookworm-slim` from `mirror.gcr.io/library/node:26-bookworm-slim` with the proxy CA (`/root/.ccr/ca-bundle.crt`, `NODE_EXTRA_CA_CERTS`) and run `docker build --network host --build-arg HTTPS_PROXY=$HTTPS_PROXY …`.
 - **Checking releases from a Claude session:** use `gh api repos/<owner>/<repo>/releases/tags/<tag>` (GraphQL and the Actions API are blocked). Remy sets CI secrets and GitHub settings himself.
 
 ## This repo

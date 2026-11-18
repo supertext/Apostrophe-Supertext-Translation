@@ -1,6 +1,6 @@
 # Supertext Translation for Apostrophe: public demo (Railway). Build context = repository root:
 #   docker build -f demo/Dockerfile -t supertext-apostrophe-demo .
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 
 ENV NODE_ENV=production APOS_RELEASE_ID=supertext-demo PORT=8080
 WORKDIR /app/demo

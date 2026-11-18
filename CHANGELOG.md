@@ -11,6 +11,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ### Changed
 
 - Demo: dotenv 17 → 18.
+- Demo: runs on Node.js 26, the current LTS (was Node 22), and Apostrophe 4.34.1; CI and the end-to-end tests use PostgreSQL 18 (was 16). The module still supports Node.js 22.12+ and Apostrophe 4.13+.
 
 ## [1.0.0] - 2026-11-09
 

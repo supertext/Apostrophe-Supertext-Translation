@@ -13,7 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@apostrophecms/vite": "^1.2.0",
-    "apostrophe": "^4.34.0",
+    "apostrophe": "^4.34.1",
     "cross-env": "^10.1.0",
     "dotenv": "^18.0.10",
     "normalize.css": "^8.0.1",
