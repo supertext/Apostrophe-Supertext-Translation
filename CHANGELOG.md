@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Changed
+
+- Language lists name Supertext's languages the way Supertext's own language list does, in the interface language: *German (Switzerland)*, *Deutsch (Schweiz)*, *allemand (Suisse)*, *tedesco (Svizzera)* instead of *Swiss High German*, *Schweizer Hochdeutsch*, *allemand suisse*, *alto tedesco svizzero* (likewise *French (Switzerland)*, *English (United States)* …).
+
 ### Security
 
 - The development setup and the demo take the fixed versions of Apostrophe's dependencies within their ranges (`dompurify` 3.4.17, `multer` 2.5, `body-parser` 1.20.9, `qs` 6.16.2, `undici` 7.30.2, `markdown-it` 14.3.3, `fast-uri`, `vite`, `fast-xml-parser` 5.12): no high or critical advisories left. No change to the module itself.

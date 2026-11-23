@@ -161,8 +161,8 @@ kit.pause()
 await deSelect.selectOption(JSON.stringify('de-DE')) // AposSelect stores JSON values
 await page.waitForTimeout(300)
 kit.resume()
-await kit.say('Under Languages, each locale gets a Supertext language. For German, choose Swiss High German.', {
-  caption: '<b>Languages</b>: Deutsch → <b>Swiss High German (de-CH)</b>',
+await kit.say('Under Languages, each locale gets a Supertext language. For German, choose German (Switzerland).', {
+  caption: '<b>Languages</b>: Deutsch → <b>German (Switzerland) (de-CH)</b>',
   during: async () => {
     await page.locator('.supertext-status__heading', { hasText: 'Languages' }).first()
       .evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'smooth' })).catch(() => {})

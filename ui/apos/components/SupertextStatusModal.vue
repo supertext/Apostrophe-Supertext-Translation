@@ -289,7 +289,7 @@ export default {
       let names = null;
       try {
         names = new Intl.DisplayNames(lang ? [ lang ] : undefined, {
-          type: 'language',
+          type: 'language', languageDisplay: 'standard',
           fallback: 'none'
         });
       } catch (e) {
