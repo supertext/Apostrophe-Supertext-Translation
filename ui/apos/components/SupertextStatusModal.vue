@@ -80,6 +80,21 @@
                 <dd><code class="supertext-ping-url">{{ status.pingUrl }}</code></dd>
               </template>
             </dl>
+            <div class="supertext-status__test supertext-send-configuration">
+              <AposButton
+                type="default"
+                class="supertext-config"
+                :label="sending ? 'supertext:configSending' : 'supertext:config'"
+                :disabled="sending || !status.versionReports"
+                @click="sendConfiguration"
+              />
+              <span
+                v-if="configResult"
+                class="supertext-config-result"
+                :class="configResult.sent ? 'supertext-status__ok' : 'supertext-status__warn'"
+              >{{ configResult.message }}</span>
+            </div>
+            <p class="supertext-status__muted">{{ $t('supertext:configHelp') }}</p>
             <p class="supertext-status__links">
               {{ $t('supertext:signupLead') }}
               <a
@@ -264,6 +279,8 @@ export default {
       error: null,
       testing: false,
       result: null,
+      sending: false,
+      configResult: null,
       form: {},
       saving: false,
       saveResult: null
@@ -422,6 +439,21 @@ export default {
         return 'supertext:informal';
       }
       return 'supertext:defaultAddress';
+    },
+    // "Send configuration to Supertext": the installed npm modules and the language mapping.
+    async sendConfiguration() {
+      this.sending = true;
+      this.configResult = null;
+      try {
+        this.configResult = await apos.http.post(`${this.action}/configuration`, { body: {} });
+      } catch (e) {
+        this.configResult = {
+          sent: false,
+          message: e.body?.message || e.message || String(e)
+        };
+      } finally {
+        this.sending = false;
+      }
     },
     async test() {
       this.testing = true;

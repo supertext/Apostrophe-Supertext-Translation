@@ -14,7 +14,7 @@
 const { Languages, REVIEW_URL, SupertextError, SDK_VERSION, baseUrlFor, createClient, normalizeKey, reviewUrlFor } = require('./lib/sdk');
 const { collectUnits } = require('./lib/collect');
 const { languageStatus, mergeLanguages, reviewFor, translateUnits, validateLanguages } = require('./lib/translate');
-const { PLUGIN_NAME, Reporting, siteUrl, versionReportsEnabled } = require('./lib/reporting');
+const { PLUGIN_NAME, Reporting, installedModules, siteUrl, versionReportsEnabled } = require('./lib/reporting');
 const { FilesError, MAX_UPLOAD_BYTES, TranslationFileError, applyTranslations, buildExport, importFile } = require('./lib/files');
 const { version } = require('./package.json');
 
@@ -688,6 +688,35 @@ module.exports = {
             throw e;
           }
           return self.status(req);
+        },
+        // POST /api/v1/supertext-apostrophe-translation/configuration (administrators): "Send
+        // configuration to Supertext", the installed npm modules and the language mapping in one
+        // report. `sent: null` while version reports are off.
+        async configuration(req) {
+          if (!self.apos.permission.can(req, ADMIN_PERMISSION.action, ADMIN_PERMISSION.type)) {
+            throw self.apos.error('forbidden');
+          }
+          const extensions = installedModules(self.apos.modules);
+          const { languages: mapping } = await self.languages();
+          const languages = Object.keys(self.apos.i18n.locales).map((code) => ({
+            code,
+            supertext: languageStatus(code, mapping).code || null
+          }));
+          let sent = null;
+          let message = req.t('supertext:configOff');
+          if (self.versionReports()) {
+            const result = await self.reporting().sendConfiguration(self.siteUrl(req), extensions, languages);
+            sent = Boolean(result && result.sent);
+            message = sent
+              ? req.t('supertext:configSent', { extensions: extensions.length, languages: languages.length })
+              : req.t('supertext:configFailed');
+          }
+          return {
+            sent,
+            extensions: extensions.length,
+            languages: languages.length,
+            message
+          };
         },
         // POST /api/v1/supertext-apostrophe-translation/test (administrators): checks the
         // API key without translating anything.

@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { Reporting, PLUGIN_NAME, siteUrl, absoluteUrl, versionReportsEnabled } = require('../lib/reporting');
+const { Reporting, PLUGIN_NAME, installedModules, siteUrl, absoluteUrl, versionReportsEnabled } = require('../lib/reporting');
 const { SDK_VERSION } = require('../lib/sdk');
 
 function setup({ apiKey = 'secret-key', versionReports, features = 200 } = {}) {
@@ -167,4 +167,51 @@ test('never throws: broken storage and no site URL', async () => {
   assert.equal(await reporting.run('onRequest', 'https://www.example.ch'), null);
   assert.equal(await reporting.run('onRequest', null), null);
   assert.equal(await reporting.lastCheck(), null);
+});
+
+test('Send configuration: the npm modules, without ApostropheCMS’s own or this one', () => {
+  const packages = {
+    '/n/@apostrophecms/seo': { name: '@apostrophecms/seo', version: '1.4.0' },
+    '/n/apostrophe/modules/@apostrophecms/page': null,
+    '/n/apostrophe': { name: 'apostrophe', version: '4.33.0' },
+    '/n/supertext-apostrophe-translation': { name: 'supertext-apostrophe-translation', version: '1.0.0' },
+    '/n/apos-forms-extra': { name: 'apos-forms-extra', version: '2.1.0' }
+  };
+  const read = (dir) => {
+    for (let d = dir; d && d !== '/'; d = path.dirname(d)) {
+      if (packages[d]) {
+        return packages[d];
+      }
+    }
+    return null;
+  };
+  const module = (...chain) => ({ __meta: { chain } });
+  const list = installedModules({
+    seo: module({ name: '@apostrophecms/seo', dirname: '/n/@apostrophecms/seo', npm: true }),
+    page: module({ name: '@apostrophecms/page', dirname: '/n/apostrophe/modules/@apostrophecms/page', npm: true }),
+    supertext: module({ name: 'supertext-apostrophe-translation', dirname: '/n/supertext-apostrophe-translation', npm: true }),
+    forms: module({ name: 'apos-forms-extra', dirname: '/n/apos-forms-extra', npm: true }),
+    formsAgain: module({ name: 'apos-forms-extra', dirname: '/n/apos-forms-extra', npm: true }),
+    article: module({ name: 'article', dirname: '/site/modules/article' })
+  }, read);
+  assert.deepEqual(list, [ { name: 'apos-forms-extra', version: '2.1.0', active: true, type: 'module' } ]);
+  assert.deepEqual(installedModules(undefined), []);
+});
+
+test('Send configuration: one extensions report with the languages, nothing with reports off', async () => {
+  const { reporting, reports } = setup();
+  const extensions = [ { name: 'apos-forms-extra', version: '2.1.0', active: true, type: 'module' } ];
+  const languages = [ { code: 'de-CH', supertext: 'de-CH' }, { code: 'de-LI', supertext: null } ];
+  const result = await reporting.sendConfiguration('https://www.example.ch', extensions, languages);
+  assert.equal(result.event, 'extensions');
+  assert.equal(result.sent, true);
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].event, 'extensions');
+  assert.deepEqual(reports[0].languages, languages);
+  assert.equal(reports[0].extensions[0].name, 'apos-forms-extra');
+  assert.ok(!JSON.stringify(reports[0]).includes('secret-key'));
+
+  const off = setup({ versionReports: false });
+  assert.equal(await off.reporting.sendConfiguration('https://www.example.ch', extensions, languages), null);
+  assert.equal(off.reports.length, 0);
 });

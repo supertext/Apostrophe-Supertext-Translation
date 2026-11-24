@@ -82,7 +82,7 @@ await page.getByText('Translate text content').click()
 await page.waitForTimeout(1000)
 await shot(page, 'localize-translate.png', modal)
 await page.getByRole('button', { name: 'Localize Content' }).click()
-await page.getByText('successfully localized').waitFor({ timeout: 180000 })
+await page.getByText('successfully localized').waitFor({ timeout: 300000 })
 await page.waitForTimeout(500)
 await shot(page, 'localize-done.png', { x: 400, y: 820, width: 600, height: 80 })
 

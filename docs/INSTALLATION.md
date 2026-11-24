@@ -177,7 +177,7 @@ To keep a field of your own schema out of translation, add `translate: false` to
 
 Administrators (users who may edit users, i.e. the *admin* role) see **Supertext** in the admin bar. It shows the module version (linked to its release notes), where the API key comes from, the API address, whether automatic translation is active in *Localize…*, the result of the last **API key check** with its time, whether version information is sent to Supertext, the ping address, the account and API key links, a **Test connection** button and the **Languages** section (a combo box with the Supertext language and, where offered, the form of address per locale, and **Save languages**; see [Languages](#languages)):
 
-![The Supertext status screen: version 0.1.0, API key set from the environment variable, API address https://api.supertext.com/v1/, automatic translation on, API key check "the connection to Supertext works" with its time, version information on with its explanation, the ping address, a successful connection test and the start of the Languages section with combo boxes for English (en-GB) and Deutsch (de-CH, formal) and a Translation review checkbox per locale](images/status.png)
+![The Supertext status screen: version 0.1.0, API key set from the environment variable, API address https://api.supertext.com/v1/, automatic translation on, API key check "the connection to Supertext works" with its time, version information on with its explanation, the ping address, the Send configuration to Supertext button, a successful connection test and the start of the Languages section with combo boxes for English (en-GB) and Deutsch (de-CH, formal) and a Translation review checkbox per locale](images/status.png)
 
 ### Translation review
 
@@ -211,7 +211,7 @@ On the status screen, *supertext.com* links to <https://www.supertext.com/person
 
 **Send version information to Supertext** (option `versionReports`, on by default): sends the site URL and the versions of this plugin, ApostropheCMS and the runtime to Supertext after an update and when the API key changes, so Supertext support can see which version you run. No content, no API key and no personal data are sent.
 
-What is sent, as JSON to Supertext's Commando Center (`https://commandocenter-production.up.railway.app/api/v1/report`):
+What is sent, as JSON to Supertext's Commando Center (`https://pluginhealth.supertext.com/api/v1/report`):
 
 - the event (`installed` the first time, `upgraded` after a change of the module, Apostrophe or Node.js version, `api_key_check` when the key check result changed, `check` from the `check` task),
 - the site URL (Apostrophe's `baseUrl` / `APOS_BASE_URL` plus `prefix`, else the address of the request),
@@ -222,6 +222,8 @@ What is sent, as JSON to Supertext's Commando Center (`https://commandocenter-pr
 Reports go from the server only, on back-end requests (status screen, translations, tasks; never on page views), in the background with a 3-second timeout. A failed report never fails anything; the module then waits an hour before trying again.
 
 **Turn it off** with `versionReports: false` in the module options or `SUPERTEXT_VERSION_REPORTS=0` in the environment (the environment wins). Then nothing at all is sent and the ping address answers 404. The API key check still runs (it only talks to the Supertext API).
+
+**Send configuration to Supertext** (status screen, administrators): when you contact Supertext support, this button sends, in one report, the npm modules installed in the site (name and version; ApostropheCMS's own and this one are left out) and the Supertext language of each locale. Nothing else is sent, and nothing at all while version information is off.
 
 **Ping address:** `GET <site URL>/api/v1/supertext-apostrophe-translation/ping?challenge=…` (shown on the status screen). Supertext calls it to see whether the site is reachable from the internet. It needs no login, isn't cached, and answers only `{"ok":true,"plugin":"Apostrophe-Supertext-Translation","challenge":"…"}` — no versions, settings or data. If a firewall or an authentication proxy protects the site, allow this path.
 
@@ -263,7 +265,7 @@ node app supertext-apostrophe-translation:translate --slug=handmade-in-bern --ty
 | Status screen: *Supertext rejected the API key …* (key check *invalid*) | As for *Supertext rejected the API key. Please check it.* below; after fixing the key, restart and click **Test connection**. |
 | Status screen: *… because Supertext can't be reached* (key check *unreachable*) | The server can't reach `api.supertext.com`; translations will fail too. Check firewall, proxy and DNS, then **Test connection**. |
 | Status screen: *Supertext answered with an error (HTTP …)* | Supertext had a problem; try **Test connection** later. Contact support@supertext.com if it persists. |
-| Supertext support can't see your installation | Version reports are off, `APOS_BASE_URL` is a local address, or the server can't reach `commandocenter-production.up.railway.app`. Reports are retried after an hour. |
+| Supertext support can't see your installation | Version reports are off, `APOS_BASE_URL` is a local address, or the server can't reach `pluginhealth.supertext.com`. Reports are retried after an hour. |
 | *Supertext rejected the API key* only for locales with *Translation review* | The review service only works with keys of the live Supertext API: with `environment: 'staging'`/`'testing'` (or `apiUrl`) leave review off. |
 | Reviewers' corrections don't show up in Apostrophe | They arrive with the next translation: localize the documents into that locale again (this replaces the existing draft). Check that the locale's *Translation review* is ticked and saved, and that `reviewUrl` isn't `''`. |
 | *Too many requests* | Supertext limits requests per second. The module retries automatically up to four times; if it still fails, localize into fewer locales at once. |
