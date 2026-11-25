@@ -23,7 +23,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - English UI text: *Localize…* is written with an ellipsis, as Apostrophe's menu shows it; a missing API key is "not set" in all three messages that report it, with the environment variable named the same way round; "Supertext couldn't translate …" matches the other error messages. German, French and Italian are unaffected.
 - README: the feature paragraph is split into one sentence per idea, and the version report now states what the UI already said, that no personal data is sent.
 - Demo: dotenv 17 → 18.
-- Demo: runs on Node.js 26, the current LTS (was Node 22), and Apostrophe 4.34.1; CI and the end-to-end tests use PostgreSQL 18 (was 16). The module still supports Node.js 22.12+ and Apostrophe 4.13+.
+- Demo: runs on Node.js 26, the current LTS (was Node 22), and Apostrophe 4.34.1; CI and the end-to-end tests use PostgreSQL 19 (was 16). The module still supports Node.js 22.12+ and Apostrophe 4.13+.
 
 ## [1.0.0] - 2026-11-09
 
