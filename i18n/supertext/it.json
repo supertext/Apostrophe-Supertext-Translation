@@ -104,6 +104,7 @@
   "files_error_forbidden": "Non è autorizzato a modificare questo contenuto in {{ language }}.",
   "files_error_exists": "Non importato: il contenuto esiste già in {{ language }}. Spunti \"Sostituire la bozza se il contenuto esiste già nella lingua di destinazione\" per sostituirne la bozza.",
   "files_error_localize_failed": "Non è stato possibile salvare la traduzione: {{ message }}",
+  "files_error_failed": "Non è riuscito. I dettagli si trovano nel log del server.",
   "files_error_no_targets": "Scelga almeno una lingua di destinazione.",
   "files_error_one_target": "Un file HTML contiene esattamente una lingua di destinazione.",
   "files_error_invalid_format": "Scelga XLIFF o HTML."

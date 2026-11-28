@@ -104,6 +104,7 @@
   "files_error_forbidden": "Vous n’êtes pas autorisé à modifier ce contenu en {{ language }}.",
   "files_error_exists": "Non importé : le contenu existe déjà en {{ language }}. Cochez \"Remplacer le brouillon lorsque le contenu existe déjà dans la langue cible\" pour remplacer son brouillon.",
   "files_error_localize_failed": "La traduction n’a pas pu être enregistrée : {{ message }}",
+  "files_error_failed": "Cela n'a pas fonctionné. Les détails figurent dans le journal du serveur.",
   "files_error_no_targets": "Choisissez au moins une langue cible.",
   "files_error_one_target": "Un fichier HTML contient exactement une langue cible.",
   "files_error_invalid_format": "Choisissez XLIFF ou HTML."

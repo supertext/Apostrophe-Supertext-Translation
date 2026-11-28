@@ -104,6 +104,7 @@
   "files_error_forbidden": "Sie dürfen diesen Inhalt in {{ language }} nicht ändern.",
   "files_error_exists": "Nicht importiert: Der Inhalt existiert in {{ language }} bereits. Aktivieren Sie \"Den Entwurf ersetzen, wo der Inhalt in der Zielsprache bereits existiert\", um seinen Entwurf zu ersetzen.",
   "files_error_localize_failed": "Die Übersetzung konnte nicht gespeichert werden: {{ message }}",
+  "files_error_failed": "Das hat nicht geklappt. Die Einzelheiten stehen im Serverprotokoll.",
   "files_error_no_targets": "Wählen Sie mindestens eine Zielsprache.",
   "files_error_one_target": "Eine HTML-Datei enthält genau eine Zielsprache.",
   "files_error_invalid_format": "Wählen Sie XLIFF oder HTML."

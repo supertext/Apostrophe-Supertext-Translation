@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Security
+
+- Export and import no longer show the text of unexpected server errors to editors; they get a plain message (all four interface languages) and the details stay in the server log.
+
 ## [1.1.0] - 2026-11-26
 
 ### Added

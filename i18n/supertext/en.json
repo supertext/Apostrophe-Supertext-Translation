@@ -104,6 +104,7 @@
   "files_error_forbidden": "You may not change this document in {{ language }}.",
   "files_error_exists": "Not imported: the document already exists in {{ language }}. Tick \"Replace the draft where the document already exists in the target locale\" to replace its draft.",
   "files_error_localize_failed": "The translation couldn't be saved: {{ message }}",
+  "files_error_failed": "That didn't work. The details are in the server log.",
   "files_error_no_targets": "Choose at least one target language.",
   "files_error_one_target": "An HTML file holds exactly one target language.",
   "files_error_invalid_format": "Choose XLIFF or HTML."

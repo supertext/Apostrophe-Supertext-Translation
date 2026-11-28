@@ -73,6 +73,7 @@ The summary lists each document and language in the file:
 | *This file isn't a valid XLIFF or HTML translation file.* | The file is damaged, not XLIFF or HTML, or not well-formed. |
 | *This file wasn't exported by the Supertext plugin, or its header was removed.* | Use a file from *Export for translation*; for HTML, keep its head. |
 | *The file is too large (at most 10 MB).* | Split the work into several exports. |
+| *That didn't work. The details are in the server log.* | An unexpected error. Ask your administrator to look at the server log. |
 | *This file belongs to another system (…).* | The file was exported by another Supertext plugin (e.g. from another CMS). |
 | *The document this file was exported from no longer exists.* | It was deleted (or you may not see it). |
 | *The site has no language ….* | The file's source or target locale isn't one of this site's locales (any more). |

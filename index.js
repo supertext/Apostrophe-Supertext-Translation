@@ -757,7 +757,8 @@ module.exports = {
         return fail(res, status, self.filesErrorMessage(req, e));
       }
       self.apos.util.error(`[supertext] translation file: ${e && e.stack ? e.stack : e}`);
-      return fail(res, 500, e && e.message ? e.message : String(e));
+      // Unexpected errors: the details stay in the log, the editor gets a plain message.
+      return fail(res, 500, req.t('supertext:files_error_failed'));
     };
     return {
       post: {
